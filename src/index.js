@@ -1,5 +1,13 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut } = require("electron");
-const path = require("path");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  globalShortcut,
+  shell,
+} = require('electron');
+const contextMenu = require('electron-context-menu');
+const path = require('path');
 
 let tray = null;
 let isQuitting = false;
@@ -20,21 +28,43 @@ const createMainWindow = (height) => {
     paintWhenInitiallyHidden: false,
   });
 
-  mainWindow.loadURL("https://poe.com");
-  mainWindow.webContents.on("did-finish-load", () => {
+  contextMenu({
+    prepend: (defaultActions, parameters, browserWindow) => [
+      {
+        label: 'Rainbow',
+        // Only show it when right-clicking images
+        visible: parameters.mediaType === 'image',
+      },
+      {
+        label: 'Search Google for “{selection}”',
+        // Only show it when right-clicking text
+        visible: parameters.selectionText.trim().length > 0,
+        click: () => {
+          shell.openExternal(
+            `https://google.com/search?q=${encodeURIComponent(
+              parameters.selectionText
+            )}`
+          );
+        },
+      },
+    ],
+  });
+
+  mainWindow.loadURL('https://poe.com');
+  mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.insertCSS(
-      "* { -webkit-user-select: text !important; }"
+      '* { -webkit-user-select: text !important; }'
     );
   });
 
-  mainWindow.on("close", (event) => {
+  mainWindow.on('close', (event) => {
     if (isQuitting) return;
     event.preventDefault();
     mainWindow.hide();
     return false;
   });
 
-  mainWindow.on("minimize", (event) => {
+  mainWindow.on('minimize', (event) => {
     event.preventDefault();
     mainWindow.hide();
     return false;
@@ -46,14 +76,13 @@ const createMainWindow = (height) => {
     return false;
   });
 
-
-  mainWindow.once("ready-to-show", () => {
+  mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
 };
 
 // App Events
-app.on("before-quit", () => {
+app.on('before-quit', () => {
   isQuitting = true;
 });
 
@@ -63,40 +92,40 @@ const toggleWindowVisibility = () => {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: mainWindow.isVisible() ? "Hide" : "Show",
-        type: "normal",
+        label: mainWindow.isVisible() ? 'Hide' : 'Show',
+        type: 'normal',
         click: toggleWindowVisibility,
       },
-      { type: "separator" },
-      { label: "Quit", type: "normal", role: "quit" },
+      { type: 'separator' },
+      { label: 'Quit', type: 'normal', role: 'quit' },
     ])
   );
 };
 
 const createTray = () => {
-  tray = new Tray(path.join(__dirname, "..", "images", "icon.png"));
-  console.log(path.join(__dirname, "..", "images", "icon.png"));
+  tray = new Tray(path.join(__dirname, '..', 'images', 'icon.png'));
+  console.log(path.join(__dirname, '..', 'images', 'icon.png'));
   const contextMenu = Menu.buildFromTemplate([
-    { label: "show", type: "normal", click: toggleWindowVisibility },
-    { type: "separator" },
-    { label: "Quit", type: "normal", role: "quit" },
+    { label: 'show', type: 'normal', click: toggleWindowVisibility },
+    { type: 'separator' },
+    { label: 'Quit', type: 'normal', role: 'quit' },
   ]);
 
   tray.setContextMenu(contextMenu);
-  tray.setToolTip("Poe");
+  tray.setToolTip('Poe');
 };
 
 const registerShortCut = () => {
   const ret = globalShortcut.register(
-    "CommandOrControl+Shift+g",
+    'CommandOrControl+Shift+g',
     toggleWindowVisibility
   );
-  if (!ret) console.log("Failed to register globalShortcut:", shortcut);
+  if (!ret) console.log('Failed to register globalShortcut:', shortcut);
 };
 
 app.dock.hide();
 app.whenReady().then(() => {
-  const { screen } = require("electron");
+  const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
   const height = primaryDisplay.workAreaSize.height;
   createMainWindow(height);
